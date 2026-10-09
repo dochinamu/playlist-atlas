@@ -1,0 +1,1275 @@
+<!--#strip-begin-->
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--#strip-end-->
+<title>Playlist Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a field guide. A wide map (PCA) up top carries the argument, feature
+   strips below show where each playlist sits on one axis at a time, the table
+   holds the raw numbers, and the analyzer checks itself at the bottom.
+   Colour is reserved entirely for playlist identity; chrome stays neutral. */
+:root{
+  --bg:#F3F4F7; --surface:#FCFCFE; --surface-2:#E9EBF0; --surface-3:#DCDFE7;
+  --ink:#15171D; --ink-2:#474C5A; --muted:#757B8C;
+  --line:#D7DAE3; --line-2:#C1C6D3;
+  --pl-1:#0072B2; --pl-2:#E69F00; --pl-3:#009E73; --pl-4:#8C5FC9;
+  --font-display:"Bricolage Grotesque","IBM Plex Sans",-apple-system,sans-serif;
+  --font-body:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",
+              "Segoe UI","Malgun Gothic",Roboto,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,
+              "Apple SD Gothic Neo","Malgun Gothic",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1014; --surface:#171A20; --surface-2:#1F232B; --surface-3:#282D37;
+    --ink:#EDEFF4; --ink-2:#B3B9C6; --muted:#878D9C;
+    --line:#282D36; --line-2:#353B47;
+    --pl-1:#5A82DC; --pl-2:#C87F28; --pl-3:#2FA37F; --pl-4:#A06FD8;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1014; --surface:#171A20; --surface-2:#1F232B; --surface-3:#282D37;
+  --ink:#EDEFF4; --ink-2:#B3B9C6; --muted:#878D9C;
+  --line:#282D36; --line-2:#353B47;
+  --pl-1:#5A82DC; --pl-2:#C87F28; --pl-3:#2FA37F; --pl-4:#A06FD8;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:var(--font-body);font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:18px;padding-block:30px 60px;
+  display:flex;flex-direction:column;gap:22px}
+:focus-visible{outline:2px solid var(--ink-2);outline-offset:2px;border-radius:3px}
+
+header{display:flex;flex-direction:column;gap:12px}
+h1{
+  font-family:var(--font-display);font-weight:700;margin:0;
+  font-size:clamp(30px,5.4vw,44px);line-height:1.02;letter-spacing:-.02em;text-wrap:balance;
+}
+.lede{margin:0;max-width:64ch;color:var(--ink-2);font-size:15.5px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:11px}
+.card-hd{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between;
+  padding:15px 17px;border-bottom:1px solid var(--line)}
+.card-hd h2{margin:0;font-family:var(--font-display);font-size:16.5px;font-weight:700;letter-spacing:-.01em}
+.sub{font-size:12.5px;color:var(--muted)}
+
+/* ---------- intake ---------- */
+.intake{display:flex;flex-direction:column;gap:13px;padding:16px 17px}
+.intake-row{display:flex;flex-wrap:wrap;gap:11px;align-items:center;justify-content:space-between}
+.intake p{margin:0;color:var(--ink-2);font-size:13.5px;max-width:52ch;min-width:0}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+button.b{
+  appearance:none;cursor:pointer;font-family:var(--font-body);font-size:12.5px;font-weight:600;
+  padding:8px 13px;border-radius:7px;border:1px solid var(--line-2);
+  background:var(--surface);color:var(--ink);
+}
+button.b:hover{border-color:var(--ink-2)}
+button.b.primary{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+button.b.primary:hover{opacity:.86}
+button.b.ghost{font-size:11.5px;padding:5px 9px;color:var(--ink-2)}
+.dropzone{
+  border:1px dashed var(--line-2);border-radius:10px;padding:15px;
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+}
+.dropzone.dragover{border-color:var(--ink-2);background:var(--surface-2)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.chip{
+  display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border-radius:999px;
+  border:1px solid var(--line-2);background:var(--surface-2);font-size:12.5px;
+}
+.chip .sw{width:10px;height:10px;border-radius:3px;flex:none}
+.chip .n{font-family:var(--font-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip button{appearance:none;border:0;background:none;cursor:pointer;color:var(--muted);
+  font-size:14px;line-height:1;padding:0 1px}
+.chip button:hover{color:var(--ink)}
+.queue{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.queue li{font-size:12.5px;color:var(--ink-2);display:flex;gap:8px;align-items:center}
+.queue .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-2);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.warn{margin:0;font-size:12.5px;color:var(--ink-2);background:var(--surface-2);
+  border-left:3px solid var(--line-2);padding:8px 11px;border-radius:0 6px 6px 0}
+
+/* ---------- plots ---------- */
+.plot{position:relative;padding:14px 17px 16px}
+.plot svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:0 17px 14px;
+  font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;flex:none}
+.tip{
+  position:absolute;pointer-events:none;z-index:6;opacity:0;transition:opacity .1s;
+  background:var(--ink);color:var(--bg);border-radius:7px;padding:7px 10px;
+  font-family:var(--font-mono);font-size:10.5px;line-height:1.55;white-space:nowrap;
+  transform:translate(-50%,-118%);font-variant-numeric:tabular-nums;
+}
+.tip.on{opacity:1}
+.strips{display:flex;flex-direction:column;gap:2px;padding:6px 17px 16px}
+.strip{display:grid;grid-template-columns:116px 1fr 88px;gap:12px;align-items:center;
+  padding:7px 0;border-top:1px solid var(--line)}
+.strip:first-child{border-top:0}
+.strip .nm{font-size:12.5px;font-weight:600;color:var(--ink-2);min-width:0}
+.strip .rng{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);text-align:right;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.strip svg{min-width:0}
+.empty{padding:38px 17px;text-align:center;color:var(--muted);font-size:13.5px}
+
+/* ---------- table ---------- */
+.tablescroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:900px;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:8px 11px;border-bottom:1px solid var(--line);font-size:12.5px;white-space:nowrap}
+th{font-size:11.5px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line-2)}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:180px}
+th:nth-child(2),td:nth-child(2){text-align:left}
+tbody tr:last-child td{border-bottom:0}
+td .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0}
+td.name{font-weight:500}
+td .art{display:block;color:var(--muted);font-size:11.5px;font-weight:400}
+
+/* ---------- method ---------- */
+.method{padding:17px}
+.method h2{margin:0 0 11px;font-family:var(--font-display);font-size:16.5px;font-weight:700}
+.method dl{margin:0;display:grid;gap:10px 18px;grid-template-columns:auto 1fr}
+.method dt{font-size:12.5px;font-weight:600;color:var(--muted);padding-top:1px;white-space:nowrap}
+.method dd{margin:0;font-size:13.5px;color:var(--ink-2);min-width:0}
+code{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);border-radius:4px;padding:1px 4px}
+footer{color:var(--muted);font-size:12.5px}
+
+@media (max-width:640px){
+  .strip{grid-template-columns:1fr;gap:3px}
+  .strip .rng{text-align:left}
+  .method dl{grid-template-columns:1fr;gap:3px 0}
+  .method dd{margin-bottom:9px}
+}
+@media (prefers-reduced-motion: reduce){
+  .queue .dot{animation:none;opacity:.8}
+  .tip{transition:none}
+}
+</style>
+<!--#strip-begin-->
+</head>
+<body>
+<!--#strip-end-->
+
+<div class="wrap">
+
+  <header>
+    <h1>Playlist Atlas</h1>
+    <p class="lede">
+      플레이리스트 폴더를 올리면 곡마다 라우드니스·밝기·템포·조성을 오디오에서 직접 계산해,
+      플레이리스트끼리 어떻게 다른지 지도 위에 펼칩니다. Spotify API가 아니라 FFT로 구한 값입니다.
+    </p>
+  </header>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>플레이리스트</h2>
+      <span class="sub">폴더 하나 = 플레이리스트 하나 · 최대 4개</span>
+    </div>
+    <div class="intake">
+      <div class="dropzone" id="dropzone">
+        <p>폴더를 통째로 끌어다 놓으면 폴더 이름이 플레이리스트 이름이 됩니다. 파일은 브라우저 밖으로 나가지 않습니다.</p>
+        <div class="btnrow">
+          <button type="button" class="b primary" id="pickDir">폴더 추가</button>
+          <button type="button" class="b" id="pickFiles">파일 추가</button>
+        </div>
+        <input type="file" id="dirInput" accept="audio/*" multiple webkitdirectory hidden>
+        <input type="file" id="fileInput" accept="audio/*" multiple hidden>
+      </div>
+      <ul class="chips" id="chips"></ul>
+      <ul class="queue" id="queue"></ul>
+      <p class="warn" id="warn" hidden></p>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>지도</h2>
+      <span class="sub" id="pcaSub">23개 특징을 표준화해 PCA로 2차원에 투영</span>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="plot" id="atlasBox">
+      <div id="atlas"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>특징별 분포</h2>
+      <span class="sub">점 하나가 곡 하나 · 세로 막대는 플레이리스트 중앙값</span>
+    </div>
+    <div class="strips" id="strips"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>트랙별 측정값</h2>
+      <span class="sub">곡 가운데 60초 구간 기준</span>
+    </div>
+    <div class="tablescroll">
+      <table id="table">
+        <thead>
+          <tr>
+            <th scope="col">트랙</th>
+            <th scope="col">플레이리스트</th>
+            <th scope="col">BPM</th>
+            <th scope="col">박자 명료도</th>
+            <th scope="col">RMS dBFS</th>
+            <th scope="col">크레스트 dB</th>
+            <th scope="col">밝기 Hz</th>
+            <th scope="col">롤오프 Hz</th>
+            <th scope="col">잡음성</th>
+            <th scope="col">온셋/초</th>
+            <th scope="col">조성</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="tableEmpty" hidden>아직 트랙이 없습니다.</p>
+  </section>
+
+  <section class="card">
+    <div class="card-hd">
+      <h2>분석기 검산</h2>
+      <span class="sub">페이지가 합성한 기준 신호 · 기대값과 맞아야 정상</span>
+    </div>
+    <div class="tablescroll">
+      <table style="min-width:620px">
+        <thead>
+          <tr>
+            <th scope="col">기준 신호</th>
+            <th scope="col">기대</th>
+            <th scope="col">BPM</th>
+            <th scope="col">밝기 Hz</th>
+            <th scope="col">잡음성</th>
+            <th scope="col">조성</th>
+          </tr>
+        </thead>
+        <tbody id="refBody"><tr><td colspan="6" style="text-align:center;color:var(--muted)">합성·분석 중…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card method">
+    <h2>측정 방법과 한계</h2>
+    <dl>
+      <dt>분석 구간</dt>
+      <dd>모노 합산 후 22.05 kHz로 리샘플하고, 곡 <strong>가운데 60초</strong>만 분석합니다. 인트로와 아웃트로를 피해 곡의 대표 구간을 잡는 MIR의 통상적인 방식입니다. 다만 디코딩 자체는 곡 전체를 해야 하므로, 긴 플레이리스트는 디코딩이 전체 시간을 지배합니다.</dd>
+      <dt>프레임</dt>
+      <dd>Hann 창 1024 샘플, 홉 512(≈43 프레임/초). FFT는 radix-2 Cooley–Tukey를 직접 구현했고 Web Worker에서 돕니다.</dd>
+      <dt>밝기·롤오프·잡음성</dt>
+      <dd>spectral centroid, 85% rolloff, spectral flatness(기하평균/산술평균)를 프레임 에너지로 가중 평균했습니다. 잡음성이 높을수록 음정이 뚜렷하지 않은 소리(노이즈, 디스토션, 심벌)입니다.</dd>
+      <dt>템포·박자 명료도</dt>
+      <dd>스펙트럼 플럭스 온셋 곡선의 자기상관 피크를 찾습니다. 여기에 <strong>두 가지</strong>가 필요합니다. 자기상관 피크를 곡선 에너지로 나눈 <em>주기성</em>과, 플럭스 합을 스펙트럼 크기 합으로 나눈 <em>플럭스 세기</em>입니다. 주기성만으로는 부족한데, 척도에 무관한 값이라 거의 정지한 음에 남는 아주 작은 주기적 잔물결도 1에 가깝게 나오기 때문입니다. 합성 신호로 잰 플럭스 세기는 드럼 비트 0.42, 지속 패드 0.16, 노이즈 0.29, 순음 0.003이었습니다.<br>
+      주기성 ≥ 0.22이고 세기 ≥ 0.25일 때만 BPM을 보고합니다. 표의 <strong>박자 명료도</strong>는 둘을 곱한 값(<code>주기성 × min(1, 세기/0.25)</code>)으로, Spotify의 danceability에 가장 가까운 측정값입니다. 클럽 비트는 0.9 부근, 지속 패드는 0.6 부근에 놓입니다.</dd>
+      <dt>조성</dt>
+      <dd>크로마만 별도로 <strong>FFT 4096</strong>(5.4 Hz)으로 구합니다. 특징 추출용 1024(21.5 Hz)로는 가온다 근처 반음(15 Hz)을 가르지 못해 단3화음과 장3화음이 구분되지 않습니다. 각 빈은 반음 중심에서 얼마나 가까운지로 가중하고, 130–2100 Hz만 씁니다. 그 다음 Krumhansl–Schmuckler 프로파일과 24개(12키 × 장·단조) 상관을 구해 최대값을 택합니다. 크로마 대역 에너지 비중·잡음성·서로 다른 음이름 수·상관 크기가 모두 문턱을 넘을 때만 조성을 표시하므로, 킥 드럼이나 노이즈에는 <code>—</code>가 나옵니다. 조바꿈이 잦은 곡은 한 값으로 요약되지 않습니다.</dd>
+      <dt>지도</dt>
+      <dd>라우드니스·크레스트·밝기·롤오프·잡음성·온셋 밀도·박자 명료도·템포·3대역 비율과 MFCC 12개를 합친 23차원을 z-표준화한 뒤 <strong>PCA</strong>로 2축에 투영합니다. t-SNE가 아니라 PCA를 쓴 이유는 결과가 결정론적이고, 축이 무엇의 조합인지 말할 수 있으며, 설명 분산을 숫자로 보고할 수 있기 때문입니다.</dd>
+      <dt>하지 않은 것</dt>
+      <dd>instrumentalness(보컬 유무)와 liveness(라이브 여부)는 학습 모델 없이 신뢰할 만하게 추정되지 않아 넣지 않았습니다. 추정치를 Spotify 라벨 이름으로 부르지 않은 것도 같은 이유입니다 — 여기 숫자는 전부 직접 측정한 물리량이거나 그 조합입니다.</dd>
+    </dl>
+  </section>
+
+  <footer>Web Audio API · 직접 구현한 radix-2 FFT · PCA</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var root = document.documentElement;
+  function css(n){ return getComputedStyle(root).getPropertyValue(n).trim(); }
+  function esc(s){
+    return String(s).replace(/[&<>"]/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+  function fmtTime(s){
+    if (!isFinite(s) || s < 0) s = 0;
+    var m = Math.floor(s/60), r = Math.floor(s%60);
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+  function median(a){
+    if (!a.length) return 0;
+    var b = a.slice().sort(function(x,y){ return x-y; }), h = b.length >> 1;
+    return b.length % 2 ? b[h] : (b[h-1]+b[h])/2;
+  }
+  var PL_VARS = ['--pl-1','--pl-2','--pl-3','--pl-4'];
+  function plColor(i){ return css(PL_VARS[i % PL_VARS.length]); }
+
+  var MAX_PLAYLISTS = 4;
+  var ANALYSIS_SR = 22050;
+  var EXCERPT_SEC = 60;
+  var KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+  /* =====================================================================
+     worker: FFT + feature extraction
+     ===================================================================== */
+  var WORKER_SRC = [
+    'function fft(re, im){',
+    '  var n = re.length, i, j, bit, len, ang, wr, wi, k, t;',
+    '  for (i = 1, j = 0; i < n; i++){',
+    '    bit = n >> 1;',
+    '    for (; j & bit; bit >>= 1) j ^= bit;',
+    '    j ^= bit;',
+    '    if (i < j){ t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }',
+    '  }',
+    '  for (len = 2; len <= n; len <<= 1){',
+    '    ang = -2*Math.PI/len; wr = Math.cos(ang); wi = Math.sin(ang);',
+    '    for (i = 0; i < n; i += len){',
+    '      var cr = 1, ci = 0, half = len >> 1;',
+    '      for (k = 0; k < half; k++){',
+    '        var ur = re[i+k], ui = im[i+k];',
+    '        var xr = re[i+k+half], xi = im[i+k+half];',
+    '        var vr = xr*cr - xi*ci, vi = xr*ci + xi*cr;',
+    '        re[i+k] = ur+vr; im[i+k] = ui+vi;',
+    '        re[i+k+half] = ur-vr; im[i+k+half] = ui-vi;',
+    '        var ncr = cr*wr - ci*wi; ci = cr*wi + ci*wr; cr = ncr;',
+    '      }',
+    '    }',
+    '  }',
+    '}',
+    '',
+    'var NMEL = 26, NMFCC = 13;',
+    'function melBanks(sr, N){',
+    '  var half = N >> 1, binHz = sr/N, lo = 0, hi = Math.min(8000, sr/2);',
+    '  function m(f){ return 2595*Math.log(1 + f/700)/Math.LN10; }',
+    '  function im(x){ return 700*(Math.pow(10, x/2595) - 1); }',
+    '  var pts = [], i;',
+    '  for (i = 0; i <= NMEL+1; i++) pts.push(im(m(lo) + (m(hi)-m(lo))*i/(NMEL+1)));',
+    '  var banks = [];',
+    '  for (i = 0; i < NMEL; i++){',
+    '    var a = pts[i], b = pts[i+1], c = pts[i+2], w = new Float32Array(half);',
+    '    for (var k = 0; k < half; k++){',
+    '      var f = k*binHz;',
+    '      if (f > a && f <= b) w[k] = (f-a)/(b-a);',
+    '      else if (f > b && f < c) w[k] = (c-f)/(c-b);',
+    '    }',
+    '    banks.push(w);',
+    '  }',
+    '  return banks;',
+    '}',
+    'function dct2(x, out){',
+    '  var n = x.length, i, k;',
+    '  for (k = 0; k < out.length; k++){',
+    '    var s = 0;',
+    '    for (i = 0; i < n; i++) s += x[i]*Math.cos(Math.PI*k*(i+0.5)/n);',
+    '    out[k] = s;',
+    '  }',
+    '}',
+    '',
+    'var MAJ = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];',
+    'var MIN = [6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];',
+    'function corr(a, b){',
+    '  var n = a.length, ma = 0, mb = 0, i;',
+    '  for (i = 0; i < n; i++){ ma += a[i]; mb += b[i]; }',
+    '  ma /= n; mb /= n;',
+    '  var num = 0, da = 0, db = 0;',
+    '  for (i = 0; i < n; i++){',
+    '    var x = a[i]-ma, y = b[i]-mb;',
+    '    num += x*y; da += x*x; db += y*y;',
+    '  }',
+    '  return (da > 0 && db > 0) ? num/Math.sqrt(da*db) : 0;',
+    '}',
+    'function estimateKey(chroma){',
+    '  var best = -2, bk = 0, bmode = 0, rot = new Array(12), i, k;',
+    '  for (k = 0; k < 12; k++){',
+    '    for (i = 0; i < 12; i++) rot[i] = chroma[(i + k) % 12];',
+    '    var cma = corr(rot, MAJ), cmi = corr(rot, MIN);',
+    '    if (cma > best){ best = cma; bk = k; bmode = 0; }',
+    '    if (cmi > best){ best = cmi; bk = k; bmode = 1; }',
+    '  }',
+    '  return { key: bk, mode: bmode, strength: best };',
+    '}',
+    '',
+    '/* Chroma needs a much finer grid than the feature pass: at 22.05 kHz with',
+    '   N=1024 a bin is 21.5 Hz, while a semitone at middle C is only 15 Hz, so a',
+    '   minor third cannot be told from a major one down there. N=4096 gives 5.4 Hz',
+    '   bins, and each bin is weighted by how close it sits to a semitone centre. */',
+    'function chromaPass(x, sr){',
+    '  var N = 4096, H = 2048, half = N >> 1, binHz = sr/N, i, k;',
+    '  var empty = { chroma: [0,0,0,0,0,0,0,0,0,0,0,0], share: 0, classes: 0 };',
+    '  if (x.length < N) return empty;',
+    '  var win = new Float32Array(N);',
+    '  for (i = 0; i < N; i++) win[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));',
+    '  var pcI = new Int16Array(half), pcW = new Float32Array(half);',
+    '  for (k = 1; k < half; k++){',
+    '    pcI[k] = -1;',
+    '    var f = k*binHz;',
+    '    if (f >= 130 && f <= 2100){',
+    '      var midi = 69 + 12*Math.log(f/440)/Math.LN2;',
+    '      var near = Math.round(midi), dev = Math.abs(midi - near);',
+    '      if (dev <= 0.5){ pcI[k] = ((near % 12) + 12) % 12; pcW[k] = 1 - 2*dev; }',
+    '    }',
+    '  }',
+    '  var re = new Float32Array(N), im = new Float32Array(N);',
+    '  var chroma = new Float32Array(12), bandE = 0, totE = 0;',
+    '  var nf = Math.floor((x.length - N)/H) + 1;',
+    '  for (var fr = 0; fr < nf; fr++){',
+    '    var s = fr*H;',
+    '    for (i = 0; i < N; i++){ re[i] = (x[s+i] || 0)*win[i]; im[i] = 0; }',
+    '    fft(re, im);',
+    '    for (k = 1; k < half; k++){',
+    '      var m2 = re[k]*re[k] + im[k]*im[k];',
+    '      totE += m2;',
+    '      if (pcI[k] >= 0){ chroma[pcI[k]] += m2*pcW[k]; bandE += m2; }',
+    '    }',
+    '  }',
+    '  var sum = 0;',
+    '  for (k = 0; k < 12; k++) sum += chroma[k];',
+    '  if (!(sum > 0)) return empty;',
+    '  var out = new Array(12), cls = 0;',
+    '  for (k = 0; k < 12; k++){ out[k] = chroma[k]/sum; if (out[k] >= 0.07) cls++; }',
+    '  return { chroma: out, share: totE > 0 ? bandE/totE : 0, classes: cls };',
+    '}',
+    '',
+    'function tempo(flux, fps){',
+    '  var n = flux.length, i, j;',
+    '  if (n < 64) return { bpm: 0, pulse: 0 };',
+    '  var w = Math.max(3, Math.round(fps));',
+    '  var env = new Float32Array(n);',
+    '  for (i = 0; i < n; i++){',
+    '    var a = Math.max(0, i-w), b = Math.min(n-1, i+w), run = 0, c = 0;',
+    '    for (j = a; j <= b; j += 2){ run += flux[j]; c++; }',
+    '    env[i] = Math.max(0, flux[i] - (c ? run/c : 0));',
+    '  }',
+    '  var e0 = 0;',
+    '  for (i = 0; i < n; i++) e0 += env[i]*env[i];',
+    '  e0 /= n;',
+    '  if (e0 <= 1e-12) return { bpm: 0, pulse: 0 };',
+    '  var loLag = Math.max(2, Math.floor(60*fps/200));',
+    '  var hiLag = Math.min(n-2, Math.ceil(60*fps/50));',
+    '  if (hiLag <= loLag) return { bpm: 0, pulse: 0 };',
+    '  var best = -1, bestLag = 0, scores = {};',
+    '  for (var lag = loLag; lag <= hiLag; lag++){',
+    '    var s = 0, cnt = n - lag;',
+    '    for (i = 0; i < cnt; i++) s += env[i]*env[i+lag];',
+    '    s = cnt > 0 ? s/cnt : 0;',
+    '    scores[lag] = s;',
+    '    if (s > best){ best = s; bestLag = lag; }',
+    '  }',
+    '  /* 0.22: synthetic drum loops land near 0.9, while pink noise and sustained',
+    '     tones peak around 0.13 by chance. Below the line we report no tempo. */',
+    '  var pulse = best/e0;',
+    '  if (!bestLag || !(pulse >= 0.22)) return { bpm: 0, pulse: pulse };',
+    '  var y0 = scores[bestLag-1] || best, y2 = scores[bestLag+1] || best;',
+    '  var den = y0 - 2*best + y2;',
+    '  var shift = den !== 0 ? 0.5*(y0-y2)/den : 0;',
+    '  if (shift < -1 || shift > 1) shift = 0;',
+    '  var bpm = 60*fps/(bestLag + shift);',
+    '  while (bpm < 70) bpm *= 2;',
+    '  while (bpm >= 160) bpm /= 2;',
+    '  return { bpm: bpm, pulse: pulse };',
+    '}',
+    '',
+    'function analyze(x, sr){',
+    '  var N = 1024, HOP = 512, half = N >> 1, i, k;',
+    '  var win = new Float32Array(N);',
+    '  for (i = 0; i < N; i++) win[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));',
+    '  var binHz = sr/N;',
+    '  var nf = Math.max(1, Math.floor((x.length - N)/HOP) + 1);',
+    '  var re = new Float32Array(N), im = new Float32Array(N);',
+    '  var mag = new Float32Array(half), prev = new Float32Array(half);',
+    '  var flux = new Float32Array(nf), rms = new Float32Array(nf);',
+    '  var banks = melBanks(sr, N), melE = new Float32Array(NMEL), melRaw = new Float32Array(NMEL);',
+    '  var mfccSum = new Float32Array(NMFCC), mfccTmp = new Float32Array(NMFCC);',
+    '  var lo = 0, mid = 0, hi = 0, peak = 0, sumSq = 0;',
+    '  var wSum = 0, wCen = 0, wRoll = 0, wFlat = 0, magSum = 0, fluxSum = 0;',
+    '  for (i = 0; i < x.length; i++){ var av = x[i] < 0 ? -x[i] : x[i]; if (av > peak) peak = av; }',
+    '  for (var f = 0; f < nf; f++){',
+    '    var s = f*HOP, e2 = 0;',
+    '    for (i = 0; i < N; i++){ var v = x[s+i] || 0; e2 += v*v; re[i] = v*win[i]; im[i] = 0; }',
+    '    rms[f] = Math.sqrt(e2/N);',
+    '    sumSq += e2/N;',
+    '    fft(re, im);',
+    '    var cNum = 0, cDen = 0, fl = 0, logSum = 0, cnt = 0, tot = 0;',
+    '    for (k = 1; k < half; k++){',
+    '      var m = Math.sqrt(re[k]*re[k] + im[k]*im[k]);',
+    '      mag[k] = m;',
+    '      var fz2 = k*binHz;',
+    '      cNum += fz2*m; cDen += m; tot += m*m;',
+    '      logSum += Math.log(m + 1e-10); cnt++;',
+    '      var dmag = m - prev[k]; if (dmag > 0) fl += dmag;',
+    '      if (fz2 < 250) lo += m*m; else if (fz2 < 2000) mid += m*m; else hi += m*m;',
+    '    }',
+    '    flux[f] = fl;',
+    '    magSum += cDen; fluxSum += fl;',
+    '    var w2 = rms[f]*rms[f];',
+    '    wSum += w2;',
+    '    wCen += w2 * (cDen > 1e-9 ? cNum/cDen : 0);',
+    '    var acc = 0, target = 0.85*cDen, roll = 0;',
+    '    for (k = 1; k < half; k++){ acc += mag[k]; if (acc >= target){ roll = k*binHz; break; } }',
+    '    wRoll += w2*roll;',
+    '    var gm = Math.exp(logSum/Math.max(1,cnt)), am = cDen/Math.max(1,cnt);',
+    '    wFlat += w2 * (am > 1e-12 ? gm/am : 0);',
+    '    var mxb = 0;',
+    '    for (k = 0; k < NMEL; k++){',
+    '      var bw = banks[k], acc2 = 0;',
+    '      for (var q = 1; q < half; q++) acc2 += mag[q]*mag[q]*bw[q];',
+    '      melRaw[k] = acc2;',
+    '      if (acc2 > mxb) mxb = acc2;',
+    '    }',
+    '    /* Clamp each frame 80 dB below its own loudest band before taking logs.',
+    '       Without the floor, a band holding only leakage swings by whole nats',
+    '       frame to frame and swamps the real onsets (librosa does this as top_db). */',
+    '    var fl0 = mxb*1e-8;',
+    '    for (k = 0; k < NMEL; k++) melE[k] = Math.log(Math.max(melRaw[k], fl0) + 1e-30);',
+    '    dct2(melE, mfccTmp);',
+    '    for (k = 0; k < NMFCC; k++) mfccSum[k] += mfccTmp[k];',
+    '    for (k = 1; k < half; k++) prev[k] = mag[k];',
+    '  }',
+    '  var rmsAll = Math.sqrt(sumSq/nf);',
+    '  var fps = sr/HOP;',
+    '  /* Two gates, because they catch different failures. pulse says the onset curve',
+    '     is periodic; it is scale-free, so a tiny clean ripple scores as high as a',
+    '     drum loop. fluxRatio says the spectrum actually moves relative to how loud',
+    '     it is. Measured on synthetic probes: beats 0.42, sustained pads 0.16,',
+    '     noise 0.29 (rejected by pulse), a pure tone 0.003. */',
+    '  var fluxRatio = magSum > 0 ? fluxSum/magSum : 0;',
+    '  var tp = tempo(flux, fps);',
+    '  if (fluxRatio < 0.25) tp = { bpm: 0, pulse: tp.pulse };',
+    '  /* Reported pulse folds both in, so a pad cannot score as danceable as a beat',
+    '     on the strength of a ripple alone. Raw value kept as pulseRaw. */',
+    '  var pulseScore = Math.min(1, tp.pulse) * Math.min(1, fluxRatio/0.25);',
+    '  /* onset rate: local maxima of the flux curve above a relative threshold */',
+    '  var fmax = 0;',
+    '  for (i = 0; i < nf; i++) if (flux[i] > fmax) fmax = flux[i];',
+    '  var onsets = 0, thr = fmax*0.18, lastOn = -99;',
+    '  for (i = 1; i < nf-1; i++){',
+    '    if (flux[i] > thr && flux[i] >= flux[i-1] && flux[i] > flux[i+1] && i - lastOn > 2){',
+    '      onsets++; lastOn = i;',
+    '    }',
+    '  }',
+    '  var cp = chromaPass(x, sr);',
+    '  var kk = estimateKey(cp.chroma);',
+    '  var mf = new Array(NMFCC);',
+    '  for (k = 0; k < NMFCC; k++) mf[k] = mfccSum[k]/nf;',
+    '  var bt = lo + mid + hi; if (bt <= 0) bt = 1;',
+    '  return {',
+    '    duration: x.length/sr,',
+    '    rmsDb: 20*Math.log10(Math.max(1e-7, rmsAll)),',
+    '    crestDb: 20*Math.log10(Math.max(1e-7, peak)/Math.max(1e-7, rmsAll)),',
+    '    centroid: wSum > 1e-12 ? wCen/wSum : 0,',
+    '    rolloff: wSum > 1e-12 ? wRoll/wSum : 0,',
+    '    flatness: wSum > 1e-12 ? wFlat/wSum : 0,',
+    '    onsetRate: onsets/(x.length/sr),',
+    '    bpm: tp.bpm, pulse: pulseScore, pulseRaw: tp.pulse, fluxRatio: fluxRatio,',
+    '    bands: [lo/bt, mid/bt, hi/bt],',
+    '    chroma: cp.chroma, chromaShare: cp.share, chromaClasses: cp.classes,',
+    '    key: kk.key, mode: kk.mode, keyStrength: kk.strength,',
+    '    mfcc: mf',
+    '  };',
+    '}',
+    'self.onmessage = function(ev){',
+    '  var d = ev.data;',
+    '  try {',
+    '    self.postMessage({ id: d.id, ok: true, result: analyze(new Float32Array(d.buf), d.sr) });',
+    '  } catch (err){',
+    '    self.postMessage({ id: d.id, ok: false, error: String((err && err.message) || err) });',
+    '  }',
+    '};'
+  ].join('\n');
+
+  var worker = null, jobs = {}, jobId = 0;
+  function getWorker(){
+    if (worker) return worker;
+    worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type:'text/javascript' })));
+    worker.onmessage = function(ev){
+      var d = ev.data, cb = jobs[d.id];
+      delete jobs[d.id];
+      if (cb) cb(d.ok ? null : new Error(d.error), d.result);
+    };
+    return worker;
+  }
+  /* Fallback for contexts where a blob Worker will not start (some browsers refuse
+     them on file://). Same code, run on this thread. ?nw=1 forces it. */
+  var SYNC = /[?&]nw=1/.test(location.search);
+  var syncFn = null;
+  function syncAnalyze(){
+    if (!syncFn){
+      syncFn = new Function(WORKER_SRC.replace(/self\.onmessage[\s\S]*$/, '') +
+                            '\nreturn analyze;')();
+    }
+    return syncFn;
+  }
+  function runAnalysis(f32, sr, cb){
+    if (SYNC || !window.Worker){
+      var fn = null;
+      try { fn = syncAnalyze(); } catch (e){ fn = null; }
+      if (fn){
+        setTimeout(function(){
+          try { cb(null, fn(f32, sr)); } catch (e2){ cb(e2); }
+        }, 0);
+        return;
+      }
+      if (!window.Worker){
+        setTimeout(function(){ cb(new Error('이 브라우저에서 분석기를 시작할 수 없습니다')); }, 0);
+        return;
+      }
+    }
+    var id = ++jobId;
+    jobs[id] = cb;
+    var buf = f32.buffer.slice(0);
+    getWorker().postMessage({ id:id, buf:buf, sr:sr }, [buf]);
+  }
+
+  /* =====================================================================
+     decode -> mono, 22.05 kHz, middle excerpt
+     ===================================================================== */
+  var actx = null;
+  function liveCtx(){
+    if (!actx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      actx = new AC();
+    }
+    return actx;
+  }
+  function excerpt(data, sr){
+    var want = Math.floor(EXCERPT_SEC*sr);
+    if (data.length <= want) return data;
+    var start = Math.floor((data.length - want)/2);
+    return data.subarray(start, start + want);
+  }
+  function decodeToMono(arrayBuffer){
+    return new Promise(function(resolve, reject){
+      var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      function mix(buf){
+        var n = buf.length, out = new Float32Array(n), ch = buf.numberOfChannels, c, i;
+        for (c = 0; c < ch; c++){
+          var d = buf.getChannelData(c);
+          for (i = 0; i < n; i++) out[i] += d[i]/ch;
+        }
+        resolve({ data: excerpt(out, buf.sampleRate), sr: buf.sampleRate });
+      }
+      function resampleMix(buf){
+        var ratio = buf.sampleRate/ANALYSIS_SR;
+        var n = Math.floor(buf.length/ratio), out = new Float32Array(n);
+        var ch = buf.numberOfChannels, c, i;
+        for (c = 0; c < ch; c++){
+          var d = buf.getChannelData(c);
+          for (i = 0; i < n; i++){
+            var pos = i*ratio, i0 = Math.floor(pos), fr = pos - i0;
+            var a = d[i0] || 0, b = d[i0+1] !== undefined ? d[i0+1] : a;
+            out[i] += (a + (b-a)*fr)/ch;
+          }
+        }
+        resolve({ data: excerpt(out, ANALYSIS_SR), sr: ANALYSIS_SR });
+      }
+      function viaLive(){
+        var p = liveCtx().decodeAudioData(arrayBuffer.slice(0), resampleMix,
+          function(e){ reject(e || new Error('decode failed')); });
+        if (p && p.then) p.then(resampleMix).catch(reject);
+      }
+      if (!OAC) return viaLive();
+      var oac;
+      try { oac = new OAC(1, 1, ANALYSIS_SR); } catch (e){ return viaLive(); }
+      var pr = oac.decodeAudioData(arrayBuffer.slice(0), mix, viaLive);
+      if (pr && pr.then) pr.then(mix).catch(viaLive);
+    });
+  }
+
+  /* =====================================================================
+     state
+     ===================================================================== */
+  var playlists = [];   /* {name, colorIndex, tracks:[]} */
+  var pending = [];
+  var chipsEl = document.getElementById('chips');
+  var queueEl = document.getElementById('queue');
+  var warnEl = document.getElementById('warn');
+
+  function allTracks(){
+    var out = [];
+    playlists.forEach(function(p, pi){
+      p.tracks.forEach(function(t){ out.push({ t:t, p:p, pi:pi }); });
+    });
+    return out;
+  }
+  function findPlaylist(name){
+    for (var i = 0; i < playlists.length; i++) if (playlists[i].name === name) return playlists[i];
+    return null;
+  }
+  function ensurePlaylist(name){
+    var p = findPlaylist(name);
+    if (p) return p;
+    if (playlists.length >= MAX_PLAYLISTS) return null;
+    p = { name: name, colorIndex: playlists.length, tracks: [] };
+    playlists.push(p);
+    return p;
+  }
+  function setWarn(msg){
+    warnEl.hidden = !msg;
+    if (msg) warnEl.textContent = msg;
+  }
+  function renderChips(){
+    chipsEl.innerHTML = playlists.map(function(p, i){
+      return '<li class="chip"><span class="sw" style="background:' + plColor(p.colorIndex) + '"></span>' +
+        esc(p.name) + '<span class="n">' + p.tracks.length + '곡</span>' +
+        '<button type="button" data-rm="' + i + '" aria-label="' + esc(p.name) + ' 제거">×</button></li>';
+    }).join('');
+  }
+  chipsEl.addEventListener('click', function(e){
+    var b = e.target.closest('[data-rm]');
+    if (!b) return;
+    playlists.splice(parseInt(b.dataset.rm, 10), 1);
+    playlists.forEach(function(p, i){ p.colorIndex = i; });
+    setWarn('');
+    renderAll();
+  });
+  function renderQueue(){
+    queueEl.innerHTML = pending.map(function(n){
+      return '<li><span class="dot"></span>' + esc(n) + ' 분석 중…</li>';
+    }).join('');
+  }
+
+  /* =====================================================================
+     intake
+     ===================================================================== */
+  var AUDIO_RE = /\.(mp3|wav|ogg|m4a|flac|aac|opus|webm|aiff?)$/i;
+  function playlistNameFor(file, fallback){
+    var rel = file.webkitRelativePath || '';
+    var parts = rel.split('/');
+    if (parts.length > 1 && parts[0]) return parts[0];
+    return fallback;
+  }
+  function addFiles(list, fallbackName){
+    var arr = [].slice.call(list).filter(function(f){
+      return (f.type && f.type.indexOf('audio/') === 0) || AUDIO_RE.test(f.name);
+    });
+    if (!arr.length){ setWarn('오디오 파일을 찾지 못했습니다.'); return; }
+    var skipped = 0;
+    arr.forEach(function(f){
+      var name = playlistNameFor(f, fallbackName);
+      var p = ensurePlaylist(name);
+      if (!p){ skipped++; return; }
+      pending.push(f.name);
+      renderQueue();
+      f.arrayBuffer().then(decodeToMono).then(function(res){
+        runAnalysis(res.data, res.sr, function(err, r){
+          pending.splice(pending.indexOf(f.name), 1);
+          renderQueue();
+          if (err) return;
+          r.name = f.name.replace(/\.[^.]+$/, '');
+          p.tracks.push(r);
+          renderAll();
+        });
+      }).catch(function(){
+        pending.splice(pending.indexOf(f.name), 1);
+        renderQueue();
+      });
+    });
+    setWarn(skipped ? ('플레이리스트는 최대 ' + MAX_PLAYLISTS + '개까지 비교합니다. ' +
+      skipped + '개 파일을 건너뛰었습니다.') : '');
+  }
+
+  var dirInput = document.getElementById('dirInput');
+  var fileInput = document.getElementById('fileInput');
+  document.getElementById('pickDir').addEventListener('click', function(){ dirInput.click(); });
+  document.getElementById('pickFiles').addEventListener('click', function(){ fileInput.click(); });
+  dirInput.addEventListener('change', function(){ addFiles(dirInput.files, '폴더'); });
+  fileInput.addEventListener('change', function(){
+    addFiles(fileInput.files, '플레이리스트 ' + (playlists.length + 1));
+  });
+
+  var dz = document.getElementById('dropzone');
+  ['dragenter','dragover'].forEach(function(t){
+    dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.add('dragover'); });
+  });
+  ['dragleave','drop'].forEach(function(t){
+    dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.remove('dragover'); });
+  });
+  dz.addEventListener('drop', function(e){
+    var dt = e.dataTransfer;
+    if (!dt) return;
+    var items = dt.items ? [].slice.call(dt.items) : [];
+    var entries = items.map(function(it){
+      return it.webkitGetAsEntry ? it.webkitGetAsEntry() : null;
+    }).filter(Boolean);
+    var dirs = entries.filter(function(en){ return en.isDirectory; });
+    if (dirs.length){
+      dirs.forEach(function(d){ walkDir(d, d.name, []); });
+      return;
+    }
+    if (dt.files && dt.files.length) addFiles(dt.files, '플레이리스트 ' + (playlists.length + 1));
+  });
+  function walkDir(entry, plName, bucket){
+    var reader = entry.createReader();
+    (function readMore(){
+      reader.readEntries(function(ents){
+        if (!ents.length){
+          if (bucket.length) addFiles(bucket, plName);
+          return;
+        }
+        var waiting = ents.length;
+        ents.forEach(function(en){
+          if (en.isFile){
+            en.file(function(f){
+              if (AUDIO_RE.test(f.name)) bucket.push(f);
+              if (--waiting === 0) readMore();
+            }, function(){ if (--waiting === 0) readMore(); });
+          } else if (en.isDirectory){
+            walkDir(en, plName, bucket);
+            if (--waiting === 0) readMore();
+          } else if (--waiting === 0) readMore();
+        });
+      }, function(){ if (bucket.length) addFiles(bucket, plName); });
+    })();
+  }
+
+  /* =====================================================================
+     feature vectors + PCA
+     ===================================================================== */
+  function vectorOf(t){
+    var v = [
+      t.rmsDb, t.crestDb,
+      Math.log(Math.max(20, t.centroid)), Math.log(Math.max(20, t.rolloff)),
+      t.flatness, t.onsetRate, t.pulse, t.bpm || 0,
+      t.bands[0], t.bands[1], t.bands[2]
+    ];
+    for (var i = 1; i <= 12; i++) v.push(t.mfcc[i] || 0);
+    return v;
+  }
+  function pca2(rows){
+    var n = rows.length, d = rows[0].length, i, j, k;
+    var mean = new Array(d).fill(0), sd = new Array(d).fill(0);
+    for (i = 0; i < n; i++) for (j = 0; j < d; j++) mean[j] += rows[i][j]/n;
+    for (i = 0; i < n; i++) for (j = 0; j < d; j++) sd[j] += Math.pow(rows[i][j]-mean[j], 2)/Math.max(1, n-1);
+    for (j = 0; j < d; j++) sd[j] = Math.sqrt(sd[j]) || 1;
+    var Z = [];
+    for (i = 0; i < n; i++){
+      var r = new Array(d);
+      for (j = 0; j < d; j++) r[j] = (rows[i][j]-mean[j])/sd[j];
+      Z.push(r);
+    }
+    var C = [];
+    for (j = 0; j < d; j++) C.push(new Array(d).fill(0));
+    for (i = 0; i < n; i++) for (j = 0; j < d; j++) for (k = j; k < d; k++){
+      var p = Z[i][j]*Z[i][k]/Math.max(1, n-1);
+      C[j][k] += p;
+      if (k !== j) C[k][j] += p;
+    }
+    var trace = 0;
+    for (j = 0; j < d; j++) trace += C[j][j];
+
+    function power(M){
+      var v = new Array(d), i2, j2, it;
+      for (i2 = 0; i2 < d; i2++) v[i2] = Math.sin(i2*12.9898 + 1.3);
+      var lam = 0;
+      for (it = 0; it < 220; it++){
+        var w = new Array(d).fill(0);
+        for (i2 = 0; i2 < d; i2++){
+          var s = 0;
+          for (j2 = 0; j2 < d; j2++) s += M[i2][j2]*v[j2];
+          w[i2] = s;
+        }
+        var norm = 0;
+        for (i2 = 0; i2 < d; i2++) norm += w[i2]*w[i2];
+        norm = Math.sqrt(norm);
+        if (norm < 1e-12) break;
+        for (i2 = 0; i2 < d; i2++) v[i2] = w[i2]/norm;
+        lam = norm;
+      }
+      return { vec: v, val: lam };
+    }
+    var e1 = power(C);
+    var D = [];
+    for (j = 0; j < d; j++){
+      D.push(new Array(d));
+      for (k = 0; k < d; k++) D[j][k] = C[j][k] - e1.val*e1.vec[j]*e1.vec[k];
+    }
+    var e2 = power(D);
+
+    var pts = Z.map(function(r){
+      var a = 0, b = 0;
+      for (j = 0; j < d; j++){ a += r[j]*e1.vec[j]; b += r[j]*e2.vec[j]; }
+      return [a, b];
+    });
+    return {
+      pts: pts,
+      ev1: trace > 0 ? e1.val/trace : 0,
+      ev2: trace > 0 ? e2.val/trace : 0
+    };
+  }
+
+  /* =====================================================================
+     atlas (PCA scatter)
+     ===================================================================== */
+  var atlasEl = document.getElementById('atlas');
+  var tipEl = document.getElementById('tip');
+  var atlasBox = document.getElementById('atlasBox');
+  var pcaSub = document.getElementById('pcaSub');
+  var legendEl = document.getElementById('legend');
+
+  function renderLegend(){
+    legendEl.innerHTML = playlists.map(function(p){
+      return '<span><i style="background:' + plColor(p.colorIndex) + '"></i>' + esc(p.name) + '</span>';
+    }).join('');
+  }
+
+  function renderAtlas(){
+    var items = allTracks();
+    var W = 760, H = 420, L = 46, R = 22, T = 18, B = 46;
+    var pw = W-L-R, ph = H-T-B;
+    var line = css('--line'), muted = css('--muted'), ink2 = css('--ink-2'), surface = css('--surface');
+
+    if (items.length < 3){
+      atlasEl.innerHTML = '<p class="empty">곡이 3개 이상 모이면 지도를 그립니다. ' +
+        '지금 ' + items.length + '곡.</p>';
+      pcaSub.textContent = '23개 특징을 표준화해 PCA로 2차원에 투영';
+      return;
+    }
+    var res = pca2(items.map(function(it){ return vectorOf(it.t); }));
+    var xs = res.pts.map(function(p){ return p[0]; });
+    var ys = res.pts.map(function(p){ return p[1]; });
+    var xmin = Math.min.apply(null, xs), xmax = Math.max.apply(null, xs);
+    var ymin = Math.min.apply(null, ys), ymax = Math.max.apply(null, ys);
+    var padX = (xmax-xmin || 1)*0.12, padY = (ymax-ymin || 1)*0.12;
+    xmin -= padX; xmax += padX; ymin -= padY; ymax += padY;
+    function sx(v){ return L + (v-xmin)/(xmax-xmin)*pw; }
+    function sy(v){ return T + ph - (v-ymin)/(ymax-ymin)*ph; }
+
+    var s = ['<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="플레이리스트별 트랙을 PCA 2축에 투영한 산점도. 같은 값은 아래 표에 있습니다.">'];
+    s.push('<rect x="' + L + '" y="' + T + '" width="' + pw + '" height="' + ph +
+      '" fill="none" stroke="' + line + '"/>');
+    s.push('<line x1="' + L + '" y1="' + sy(0).toFixed(1) + '" x2="' + (W-R) + '" y2="' + sy(0).toFixed(1) +
+      '" stroke="' + line + '"/>');
+    s.push('<line x1="' + sx(0).toFixed(1) + '" y1="' + T + '" x2="' + sx(0).toFixed(1) + '" y2="' + (T+ph) +
+      '" stroke="' + line + '"/>');
+
+    var cents = {};
+    items.forEach(function(it, i){
+      var c = cents[it.pi] || (cents[it.pi] = { x:0, y:0, n:0, name: it.p.name, ci: it.p.colorIndex });
+      c.x += res.pts[i][0]; c.y += res.pts[i][1]; c.n++;
+    });
+
+    items.forEach(function(it, i){
+      s.push('<circle cx="' + sx(res.pts[i][0]).toFixed(1) + '" cy="' + sy(res.pts[i][1]).toFixed(1) +
+        '" r="5" fill="' + plColor(it.p.colorIndex) + '" stroke="' + surface +
+        '" stroke-width="2" data-i="' + i + '" style="cursor:pointer"/>');
+    });
+    Object.keys(cents).forEach(function(k){
+      var c = cents[k], cx = sx(c.x/c.n), cy = sy(c.y/c.n);
+      s.push('<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="12" fill="none" stroke="' +
+        plColor(c.ci) + '" stroke-width="2" stroke-dasharray="3 3" opacity="0.85"/>');
+      /* stroke-then-fill keeps the name legible when a track dot sits behind it */
+      s.push('<text x="' + cx.toFixed(1) + '" y="' + (cy-18).toFixed(1) +
+        '" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="' +
+        plColor(c.ci) + '" stroke="' + surface + '" stroke-width="3.5" paint-order="stroke" ' +
+        'stroke-linejoin="round" pointer-events="none">' + esc(c.name) + '</text>');
+    });
+
+    s.push('<text x="' + (L+pw/2) + '" y="' + (T+ph+32) + '" text-anchor="middle" ' +
+      'font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="' + ink2 + '">PC1 — 설명 분산 ' +
+      (res.ev1*100).toFixed(0) + '%</text>');
+    s.push('<text x="14" y="' + (T+ph/2) + '" text-anchor="middle" transform="rotate(-90 14 ' + (T+ph/2) +
+      ')" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="' + ink2 + '">PC2 — ' +
+      (res.ev2*100).toFixed(0) + '%</text>');
+    s.push('<text x="' + (W-R) + '" y="' + (T-5) + '" text-anchor="end" ' +
+      'font-family="IBM Plex Mono, monospace" font-size="10" fill="' + muted + '">' +
+      items.length + ' tracks</text>');
+    s.push('</svg>');
+    atlasEl.innerHTML = s.join('');
+    pcaSub.textContent = '23개 특징 · PC1+PC2가 분산의 ' + ((res.ev1+res.ev2)*100).toFixed(0) + '% 설명';
+
+    var svg = atlasEl.querySelector('svg');
+    [].forEach.call(svg.querySelectorAll('circle[data-i]'), function(c){
+      c.addEventListener('mouseenter', function(){
+        var it = items[parseInt(c.dataset.i, 10)];
+        if (!it) return;
+        var t = it.t;
+        tipEl.innerHTML = esc(t.name) + '<br>' + esc(it.p.name) +
+          '<br>' + (t.bpm ? t.bpm.toFixed(1) + ' BPM' : 'BPM —') +
+          ' · 명료도 ' + t.pulse.toFixed(2) +
+          '<br>밝기 ' + Math.round(t.centroid) + ' Hz · RMS ' + t.rmsDb.toFixed(1) + ' dB';
+        var br = svg.getBoundingClientRect(), bb = atlasBox.getBoundingClientRect();
+        tipEl.style.left = (parseFloat(c.getAttribute('cx'))/W*br.width + (br.left-bb.left)) + 'px';
+        tipEl.style.top = (parseFloat(c.getAttribute('cy'))/H*br.height + (br.top-bb.top)) + 'px';
+        tipEl.classList.add('on');
+      });
+      c.addEventListener('mouseleave', function(){ tipEl.classList.remove('on'); });
+    });
+  }
+
+  /* =====================================================================
+     per-feature strips
+     ===================================================================== */
+  var FEATURES = [
+    { key:'rmsDb',     label:'라우드니스',   unit:'dBFS', fmt:function(v){ return v.toFixed(1); } },
+    { key:'crestDb',   label:'다이내믹',     unit:'dB',   fmt:function(v){ return v.toFixed(1); } },
+    { key:'centroid',  label:'밝기',         unit:'Hz',   fmt:function(v){ return Math.round(v) + ''; } },
+    { key:'flatness',  label:'잡음성',       unit:'',     fmt:function(v){ return v.toFixed(3); } },
+    { key:'onsetRate', label:'온셋 밀도',    unit:'/s',   fmt:function(v){ return v.toFixed(1); } },
+    { key:'pulse',     label:'박자 명료도',  unit:'',     fmt:function(v){ return v.toFixed(2); } },
+    { key:'bpm',       label:'템포',         unit:'BPM',  fmt:function(v){ return v.toFixed(0); } }
+  ];
+  var stripsEl = document.getElementById('strips');
+
+  function renderStrips(){
+    var items = allTracks();
+    if (!items.length){
+      stripsEl.innerHTML = '<p class="empty">플레이리스트를 추가하면 특징별 분포를 그립니다.</p>';
+      return;
+    }
+    var rowH = Math.max(26, playlists.length*13 + 10);
+    var W = 560;
+    var line = css('--line'), surface = css('--surface'), muted = css('--muted');
+
+    stripsEl.innerHTML = FEATURES.map(function(F){
+      var vals = items.map(function(it){ return it.t[F.key]; })
+                      .filter(function(v){ return typeof v === 'number' && isFinite(v) && (F.key !== 'bpm' || v > 0); });
+      if (!vals.length) return '';
+      var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      if (hi - lo < 1e-9){ hi = lo + 1; }
+      var pad = (hi-lo)*0.06;
+      var mn = lo - pad, mx = hi + pad;
+      function X(v){ return 8 + (v-mn)/(mx-mn)*(W-16); }
+
+      var g = ['<svg viewBox="0 0 ' + W + ' ' + rowH + '" preserveAspectRatio="none" role="img" aria-label="' +
+               esc(F.label) + ' 분포">'];
+      g.push('<line x1="8" y1="' + (rowH-3) + '" x2="' + (W-8) + '" y2="' + (rowH-3) +
+             '" stroke="' + line + '"/>');
+      playlists.forEach(function(p, pi){
+        var y = 8 + pi*13;
+        var pv = p.tracks.map(function(t){ return t[F.key]; })
+                         .filter(function(v){ return typeof v === 'number' && isFinite(v) && (F.key !== 'bpm' || v > 0); });
+        pv.forEach(function(v){
+          g.push('<circle cx="' + X(v).toFixed(1) + '" cy="' + y + '" r="3.6" fill="' +
+                 plColor(p.colorIndex) + '" fill-opacity="0.75" stroke="' + surface + '" stroke-width="1"/>');
+        });
+        if (pv.length){
+          var md = median(pv);
+          g.push('<rect x="' + (X(md)-1).toFixed(1) + '" y="' + (y-7) + '" width="2" height="14" fill="' +
+                 plColor(p.colorIndex) + '"/>');
+        }
+      });
+      g.push('</svg>');
+
+      return '<div class="strip"><div class="nm">' + esc(F.label) + '</div>' +
+             '<div style="min-width:0">' + g.join('') + '</div>' +
+             '<div class="rng">' + F.fmt(lo) + '–' + F.fmt(hi) + ' ' + esc(F.unit) + '</div></div>';
+    }).join('');
+  }
+
+  /* =====================================================================
+     table
+     ===================================================================== */
+  var tbody = document.getElementById('tbody');
+  var tableEmpty = document.getElementById('tableEmpty');
+  /* Only name a key when the material can actually carry one: enough energy in the
+     chroma band (a kick drum has almost none), tonal rather than broadband, and a
+     clear winner among the 24 profiles. Otherwise say nothing. */
+  function keyLabel(t){
+    if (!t || t.keyStrength === undefined) return '—';
+    if (t.chromaShare < 0.15 || t.flatness > 0.35) return '—';
+    if (t.chromaClasses < 3 || t.keyStrength < 0.55) return '—';
+    return KEYS[t.key] + (t.mode ? ' minor' : ' major');
+  }
+  function renderTable(){
+    var items = allTracks();
+    tableEmpty.hidden = items.length > 0;
+    tbody.innerHTML = items.map(function(it){
+      var t = it.t;
+      return '<tr>' +
+        '<td class="name">' + esc(t.name) + '<span class="art">' + fmtTime(t.duration) + ' 분석</span></td>' +
+        '<td><span class="sw" style="background:' + plColor(it.p.colorIndex) + '"></span>' + esc(it.p.name) + '</td>' +
+        '<td>' + (t.bpm ? t.bpm.toFixed(1) : '—') + '</td>' +
+        '<td>' + t.pulse.toFixed(2) + '</td>' +
+        '<td>' + t.rmsDb.toFixed(1) + '</td>' +
+        '<td>' + t.crestDb.toFixed(1) + '</td>' +
+        '<td>' + Math.round(t.centroid).toLocaleString() + '</td>' +
+        '<td>' + Math.round(t.rolloff).toLocaleString() + '</td>' +
+        '<td>' + t.flatness.toFixed(3) + '</td>' +
+        '<td>' + t.onsetRate.toFixed(1) + '</td>' +
+        '<td>' + keyLabel(t) + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function renderAll(){
+    renderChips();
+    renderLegend();
+    renderAtlas();
+    renderStrips();
+    renderTable();
+  }
+
+  /* =====================================================================
+     synthetic audio: demo playlists + reference signals
+     ===================================================================== */
+  function rng(seed){
+    var s = seed >>> 0;
+    return function(){
+      s = (s*1664525 + 1013904223) >>> 0;
+      return s/4294967296;
+    };
+  }
+  function normalize(d, target){
+    var pk = 0, i;
+    for (i = 0; i < d.length; i++){ var a = d[i] < 0 ? -d[i] : d[i]; if (a > pk) pk = a; }
+    if (pk > 0) for (i = 0; i < d.length; i++) d[i] = d[i]/pk*target;
+    return d;
+  }
+  function genBeat(seed, bpm, bright, secs){
+    var sr = ANALYSIS_SR, n = Math.floor(sr*secs), d = new Float32Array(n), R = rng(seed);
+    var beat = 60/bpm, i, t;
+    for (var k = 0; k*beat < secs; k++){
+      var s = Math.floor(k*beat*sr), ph = 0;
+      for (i = 0; i < Math.floor(0.3*sr) && s+i < n; i++){
+        t = i/sr;
+        ph += 2*Math.PI*(46 + 128*Math.exp(-t*30))/sr;
+        d[s+i] += Math.sin(ph)*Math.exp(-t*8.5)*0.9;
+      }
+    }
+    for (var h = 0; h*beat/2 < secs; h++){
+      var hs = Math.floor(h*beat/2*sr), prev = 0;
+      for (i = 0; i < Math.floor(0.06*sr) && hs+i < n; i++){
+        t = i/sr;
+        var nz = R()*2-1, hp = nz - prev;
+        prev = nz;
+        d[hs+i] += hp*Math.exp(-t*65)*(0.08 + 0.22*bright)*(h % 2 ? 1 : 0.55);
+      }
+    }
+    var scale = [0,3,5,7,10], rootHz = 55*Math.pow(2, Math.floor(R()*3)/12);
+    for (var b = 0; b*beat*2 < secs; b++){
+      var bs = Math.floor(b*beat*2*sr);
+      var f = rootHz*Math.pow(2, scale[Math.floor(R()*scale.length)]/12);
+      for (i = 0; i < Math.floor(beat*1.7*sr) && bs+i < n; i++){
+        t = i/sr;
+        var env = Math.min(1, t*120)*Math.exp(-t*1.9);
+        d[bs+i] += (Math.sin(2*Math.PI*f*t)*0.8 + Math.sin(4*Math.PI*f*t)*0.25 +
+                    Math.sin(6*Math.PI*f*t)*0.1*bright)*env*0.3;
+      }
+    }
+    return normalize(d, 0.9);
+  }
+  function genPad(seed, secs){
+    var sr = ANALYSIS_SR, n = Math.floor(sr*secs), d = new Float32Array(n), R = rng(seed);
+    var root = 110*Math.pow(2, Math.floor(R()*5)/12);
+    var voices = [1, 1.1892, 1.4983, 2.0];   /* root, minor 3rd, 5th, octave */
+    for (var v = 0; v < voices.length; v++){
+      /* keep the vibrato very slow and shallow: deeper modulation gives the pad a
+         periodic flux the tempo estimator would (correctly) read as a pulse */
+      var f = root*voices[v], drift = 0.03 + R()*0.04, phase = R()*6.28;
+      for (var i = 0; i < n; i++){
+        var t = i/sr;
+        var env = Math.min(1, t/2.2)*Math.min(1, (secs-t)/2.2);
+        d[i] += Math.sin(2*Math.PI*f*t + Math.sin(2*Math.PI*drift*t + phase)*0.10)*env*0.16;
+      }
+    }
+    var lp = 0;
+    for (var j = 0; j < n; j++){
+      lp += ((R()*2-1) - lp)*0.012;
+      d[j] += lp*0.1;
+    }
+    return normalize(d, 0.72);
+  }
+  function seedDemo(){
+    var defs = [];
+    [122, 128, 104, 116].forEach(function(bpm, i){
+      defs.push({ pl:'Demo · 클럽', name:'club-' + (i+1) + ' (' + bpm + ' BPM)',
+                  make:function(){ return genBeat(1000+i*37, bpm, 0.9, 12); } });
+    });
+    [0,1,2,3].forEach(function(i){
+      defs.push({ pl:'Demo · 앰비언트', name:'ambient-' + (i+1),
+                  make:function(){ return genPad(5000+i*53, 12); } });
+    });
+    defs.forEach(function(def){
+      var p = ensurePlaylist(def.pl);
+      if (!p) return;
+      runAnalysis(def.make(), ANALYSIS_SR, function(err, r){
+        if (err) return;
+        r.name = def.name;
+        p.tracks.push(r);
+        renderAll();
+      });
+    });
+  }
+
+  function refPink(secs){
+    var n = Math.floor(ANALYSIS_SR*secs), out = new Float32Array(n);
+    var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for (var i = 0; i < n; i++){
+      var w = Math.random()*2-1;
+      b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759;
+      b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856;
+      b4 = 0.55000*b4 + w*0.5329522; b5 = -0.7616*b5 - w*0.0168980;
+      out[i] = (b0+b1+b2+b3+b4+b5+b6 + w*0.5362)*0.09;
+      b6 = w*0.115926;
+    }
+    return out;
+  }
+  function refChord(secs, minor){
+    var n = Math.floor(ANALYSIS_SR*secs), out = new Float32Array(n);
+    var third = minor ? 3 : 4;
+    var fs = [261.63, 261.63*Math.pow(2, third/12), 261.63*Math.pow(2, 7/12), 523.25];
+    for (var v = 0; v < fs.length; v++){
+      for (var i = 0; i < n; i++){
+        var t = i/ANALYSIS_SR;
+        out[i] += Math.sin(2*Math.PI*fs[v]*t)*0.2 + Math.sin(4*Math.PI*fs[v]*t)*0.05;
+      }
+    }
+    return normalize(out, 0.8);
+  }
+  var refBody = document.getElementById('refBody');
+  function seedRefs(){
+    var defs = [
+      { name:'핑크 노이즈', expect:'박자 없음 · 잡음성 높음', make:function(){ return refPink(8); } },
+      { name:'킥 루프 100 BPM', expect:'100 BPM · 밝기 낮음', make:function(){ return genBeat(7, 100, 0, 8); } },
+      { name:'C 장3화음', expect:'C major · 잡음성 낮음', make:function(){ return refChord(8, false); } },
+      { name:'C 단3화음', expect:'C minor · 잡음성 낮음', make:function(){ return refChord(8, true); } }
+    ];
+    var results = new Array(defs.length), done = 0;
+    defs.forEach(function(def, i){
+      runAnalysis(def.make(), ANALYSIS_SR, function(err, r){
+        results[i] = err ? null : r;
+        if (++done === defs.length){
+          refBody.innerHTML = defs.map(function(d, j){
+            var r2 = results[j];
+            if (!r2) return '<tr><td>' + esc(d.name) + '</td><td colspan="5">분석 실패</td></tr>';
+            return '<tr><td class="name">' + esc(d.name) + '</td>' +
+              '<td style="color:var(--muted)">' + esc(d.expect) + '</td>' +
+              '<td>' + (r2.bpm ? r2.bpm.toFixed(1) : '—') + '</td>' +
+              '<td>' + Math.round(r2.centroid).toLocaleString() + '</td>' +
+              '<td>' + r2.flatness.toFixed(3) + '</td>' +
+              '<td>' + keyLabel(r2) + '</td></tr>';
+          }).join('');
+        }
+      });
+    });
+  }
+
+  if (window.matchMedia){
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var onTheme = function(){ renderAll(); };
+    if (mq.addEventListener) mq.addEventListener('change', onTheme);
+    else if (mq.addListener) mq.addListener(onTheme);
+  }
+  window.addEventListener('resize', function(){ renderAtlas(); });
+
+  renderAll();
+  seedDemo();
+  seedRefs();
+})();
+</script>
+<!--#strip-begin-->
+</body>
+</html>
+<!--#strip-end-->
