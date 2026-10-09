@@ -284,8 +284,6 @@ footer{color:var(--muted);font-size:12.5px}
       <dd>크로마만 별도로 <strong>FFT 4096</strong>(5.4 Hz)으로 구합니다. 특징 추출용 1024(21.5 Hz)로는 가온다 근처 반음(15 Hz)을 가르지 못해 단3화음과 장3화음이 구분되지 않습니다. 각 빈은 반음 중심에서 얼마나 가까운지로 가중하고, 130–2100 Hz만 씁니다. 그 다음 Krumhansl–Schmuckler 프로파일과 24개(12키 × 장·단조) 상관을 구해 최대값을 택합니다. 크로마 대역 에너지 비중·잡음성·서로 다른 음이름 수·상관 크기가 모두 문턱을 넘을 때만 조성을 표시하므로, 킥 드럼이나 노이즈에는 <code>—</code>가 나옵니다. 조바꿈이 잦은 곡은 한 값으로 요약되지 않습니다.</dd>
       <dt>지도</dt>
       <dd>라우드니스·크레스트·밝기·롤오프·잡음성·온셋 밀도·박자 명료도·템포·3대역 비율과 MFCC 12개를 합친 23차원을 z-표준화한 뒤 <strong>PCA</strong>로 2축에 투영합니다. 결과가 결정론적이고, 각 축이 어떤 특징들의 조합인지 말할 수 있으며, 설명 분산을 숫자로 보고할 수 있습니다.</dd>
-      <dt>하지 않은 것</dt>
-      <dd>보컬 유무와 라이브 여부는 학습 모델 없이 신뢰할 만하게 추정되지 않아 넣지 않았습니다. 여기 숫자는 전부 직접 측정한 물리량이거나 그 조합입니다.</dd>
     </dl>
   </section>
 
@@ -735,6 +733,12 @@ footer{color:var(--muted);font-size:12.5px}
     renderAll();
   });
   function renderQueue(){
+    if (!pending.length){ queueEl.innerHTML = ''; return; }
+    if (pending.length > 3){
+      queueEl.innerHTML = '<li><span class="dot"></span>' + pending.length +
+        '곡 남음 · ' + esc(pending[0]) + ' 분석 중…</li>';
+      return;
+    }
     queueEl.innerHTML = pending.map(function(n){
       return '<li><span class="dot"></span>' + esc(n) + ' 분석 중…</li>';
     }).join('');
@@ -750,34 +754,56 @@ footer{color:var(--muted);font-size:12.5px}
     if (parts.length > 1 && parts[0]) return parts[0];
     return fallback;
   }
+  /* Decoding holds the whole PCM in memory, so a dropped folder is worked through
+     a few files at a time rather than all at once. */
+  var MAX_PER_PLAYLIST = 40, MAX_CONCURRENT = 2;
+  var jobQueue = [], active = 0;
+
+  function pump(){
+    while (active < MAX_CONCURRENT && jobQueue.length){
+      (function(job){
+        active++;
+        job.file.arrayBuffer().then(decodeToMono).then(function(res){
+          runAnalysis(res.data, res.sr, function(err, r){ finishJob(job, err, r); });
+        }).catch(function(e){ finishJob(job, e || new Error('decode'), null); });
+      })(jobQueue.shift());
+    }
+  }
+  function finishJob(job, err, r){
+    active--;
+    var i = pending.indexOf(job.file.name);
+    if (i >= 0) pending.splice(i, 1);
+    renderQueue();
+    if (!err && r){
+      r.name = job.file.name.replace(/\.[^.]+$/, '');
+      job.pl.tracks.push(r);
+      renderAll();
+    }
+    pump();
+  }
+
   function addFiles(list, fallbackName){
     var arr = [].slice.call(list).filter(function(f){
       return (f.type && f.type.indexOf('audio/') === 0) || AUDIO_RE.test(f.name);
     });
     if (!arr.length){ setWarn('오디오 파일을 찾지 못했습니다.'); return; }
-    var skipped = 0;
+    var noRoom = 0, overCap = 0, queued = {};
     arr.forEach(function(f){
-      var name = playlistNameFor(f, fallbackName);
-      var p = ensurePlaylist(name);
-      if (!p){ skipped++; return; }
+      var p = ensurePlaylist(playlistNameFor(f, fallbackName));
+      if (!p){ noRoom++; return; }
+      var already = p.tracks.length + (queued[p.name] || 0);
+      if (already >= MAX_PER_PLAYLIST){ overCap++; return; }
+      queued[p.name] = (queued[p.name] || 0) + 1;
       pending.push(f.name);
-      renderQueue();
-      f.arrayBuffer().then(decodeToMono).then(function(res){
-        runAnalysis(res.data, res.sr, function(err, r){
-          pending.splice(pending.indexOf(f.name), 1);
-          renderQueue();
-          if (err) return;
-          r.name = f.name.replace(/\.[^.]+$/, '');
-          p.tracks.push(r);
-          renderAll();
-        });
-      }).catch(function(){
-        pending.splice(pending.indexOf(f.name), 1);
-        renderQueue();
-      });
+      jobQueue.push({ file: f, pl: p });
     });
-    setWarn(skipped ? ('플레이리스트는 최대 ' + MAX_PLAYLISTS + '개까지 비교합니다. ' +
-      skipped + '개 파일을 건너뛰었습니다.') : '');
+    renderChips();
+    renderQueue();
+    pump();
+    var msg = [];
+    if (noRoom) msg.push('플레이리스트는 ' + MAX_PLAYLISTS + '개까지 비교합니다 (' + noRoom + '곡 제외).');
+    if (overCap) msg.push('플레이리스트당 ' + MAX_PER_PLAYLIST + '곡까지 분석합니다 (' + overCap + '곡 제외).');
+    setWarn(msg.join(' '));
   }
 
   var dirInput = document.getElementById('dirInput');
@@ -805,32 +831,45 @@ footer{color:var(--muted);font-size:12.5px}
     }).filter(Boolean);
     var dirs = entries.filter(function(en){ return en.isDirectory; });
     if (dirs.length){
-      dirs.forEach(function(d){ walkDir(d, d.name, []); });
+      dirs.forEach(function(d){
+        var bucket = [];
+        collectDir(d, bucket, function(){
+          if (bucket.length) addFiles(bucket, d.name);
+          else setWarn('"' + d.name + '" 안에서 오디오 파일을 찾지 못했습니다.');
+        });
+      });
       return;
     }
     if (dt.files && dt.files.length) addFiles(dt.files, '플레이리스트 ' + (playlists.length + 1));
   });
-  function walkDir(entry, plName, bucket){
+
+  /* Walks a dropped folder, including subfolders, and calls done() exactly once —
+     after every nested reader has finished. The bucket is handed to addFiles by the
+     caller, so a nested folder cannot submit the same files a second time. */
+  function collectDir(entry, bucket, done){
     var reader = entry.createReader();
+    var subs = 0, readerDone = false, finished = false;
+    function maybeDone(){
+      if (readerDone && subs === 0 && !finished){ finished = true; done(); }
+    }
     (function readMore(){
       reader.readEntries(function(ents){
-        if (!ents.length){
-          if (bucket.length) addFiles(bucket, plName);
-          return;
-        }
+        if (!ents.length){ readerDone = true; return maybeDone(); }
         var waiting = ents.length;
+        function step(){ if (--waiting === 0) readMore(); }
         ents.forEach(function(en){
           if (en.isFile){
             en.file(function(f){
               if (AUDIO_RE.test(f.name)) bucket.push(f);
-              if (--waiting === 0) readMore();
-            }, function(){ if (--waiting === 0) readMore(); });
+              step();
+            }, step);
           } else if (en.isDirectory){
-            walkDir(en, plName, bucket);
-            if (--waiting === 0) readMore();
-          } else if (--waiting === 0) readMore();
+            subs++;
+            collectDir(en, bucket, function(){ subs--; maybeDone(); });
+            step();
+          } else step();
         });
-      }, function(){ if (bucket.length) addFiles(bucket, plName); });
+      }, function(){ readerDone = true; maybeDone(); });
     })();
   }
 
