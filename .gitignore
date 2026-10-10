@@ -1,0 +1,6 @@
+# Audio and FMA metadata stay local: the repo ships analysis results, not media.
+fma-data/
+*.mp3
+*.wav
+tracks.csv
+.DS_Store
